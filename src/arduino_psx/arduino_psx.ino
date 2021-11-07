@@ -91,7 +91,7 @@ ISR(SPI_STC_vect) {
 
   if (inbyte == command_buff[curr_byte]) {
 #if INVERT_OUTPUT == 0
-    ACK_DDR |= (1 << DATA_PIN); // output
+    SPI_DDR |= (1 << DATA_PIN); // output
 #endif
     SPDR = data_buff[curr_byte];
     curr_byte++;
@@ -101,14 +101,16 @@ ISR(SPI_STC_vect) {
 #if INVERT_OUTPUT
       ACK_PORT |= (1 << ACK_PIN);
 #else
+      ACK_DDR |= (1 << ACK_PIN);    // output
       ACK_PORT &= ~(1 << ACK_PIN);
 #endif
       _delay_us(1);
       // Set ACK high
 #if INVERT_OUTPUT
-      ACK_PORT &= ~(1 << ACK_PIN);
+      ACK_PORT &= ~(1 << ACK_PIN);  // Release ACK
 #else
-      ACK_PORT |= (1 << ACK_PIN);
+      ACK_DDR &= ~(1 << ACK_PIN); // input
+      ACK_PORT &= ~(1 << ACK_PIN); // ensure pullup is off
 #endif
 
     } else {
@@ -127,18 +129,17 @@ uint16_t button_state = 0;
 void setup() {
 
   /* PSX setup */
-  // Set ACK high
 #if INVERT_OUTPUT
-  ACK_PORT &= ~(1 << ACK_PIN);
-#else
-  ACK_PORT |= (1 << ACK_PIN);
-#endif
+  ACK_DDR |= (1 << ACK_PIN);    // output
+  ACK_PORT &= ~(1 << ACK_PIN);  // set LOW (open drain -- pull-up on console)
 
-#if INVERT_OUTPUT
-  SPI_DDR |= (1 << DATA_PIN); //output
-  SPI_PORT &= ~(1 << DATA_PIN); //set LOW
+  SPI_DDR |= (1 << DATA_PIN); // output
+  SPI_PORT &= ~(1 << DATA_PIN); //set LOW (open drain -- pull-up on console)
 #else
-  SPI_DDR &= ~(1 << DATA_PIN); //input
+  ACK_DDR &= ~(1 << ACK_PIN); // input
+  ACK_PORT &= ~(1 << ACK_PIN); // ensure pullup is off
+
+  SPI_DDR &= ~(1 << DATA_PIN); // input
   SPI_PORT &= ~(1 << DATA_PIN); // ensure pullup is off
 #endif
 
