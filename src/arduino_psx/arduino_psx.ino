@@ -45,7 +45,7 @@
 /* PSX globals */
 #if INVERT_OUTPUT
 volatile uint8_t data_buff[DATA_LEN] = {0xBE, 0xA5, 0x00, 0x00, 0x00}; //Reply.
-#elif
+#else
 volatile uint8_t data_buff[DATA_LEN] = {0x41, 0x5A, 0xFF, 0xFF, 0xFF}; //Reply.
 #endif
 volatile uint8_t command_buff[DATA_LEN] = {0x01, 0x42, 0x00, 0x00, 0x00};
