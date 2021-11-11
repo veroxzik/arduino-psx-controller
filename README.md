@@ -24,9 +24,9 @@ Let's get acquainted with the Playstation cable and color codes. It is always a 
 
 * **CIPO:** (Controller-In / Peripheral-Out) This is data from the controller to the console. It is held HIGH via a pull-up resistor inside the console. We will use one of the transistors to pull this line to GND. Also known as MISO.
 * **COPI:** (Controller-Out / Peripheral-In) This is the data from the console to the controller. Also known as MOSI.
-* **7.6V:** This typically powers the rumble motors, but we can use it to power the arduino.
+* **7.6V:** This typically powers the rumble motors, but we can use it to power the arduino (see `Powering the arduino` in additional notes section).
 * **GND:** The common ground for the console, also known as 0V.
-* **3.3V:** This is power coming from the console. We will not be using this.
+* **3.3V:** This is power coming from the console. We can use it to power the arduino (see `Powering the arduino` in additional notes section).
 * **CS:** (Chip Select) This line goes LOW when the console is requesting data from a controller. This is how the console selects which player's controller to read from. Also known as SS.
 * **N/C:** This wire is not used (not connected).
 * **ACK:** This is how the controller tells the console it has finished sending data. It is held HIGH via a pull-up resistor inside the console. The second transistor will pull this line to GND.
@@ -47,56 +47,56 @@ The example program follows the wiring below. Please refer to your specific tran
 
 ### Pins that can be changed
 
-* ACK
+* ACK (see `ps2.c`)
 
 ## Basic Use
 
-The example includes D-Pad controls. Connect `A0`, `A1`, `A2`, or `A3`.
+### setup()
+
+- Prepare your input pins by setting them as INPUT_PULLUP
+
+- Call the `PS2_MapInput(uint16_t *input, uint16_t mask, PS2_INPUT buttons)` function multiple times to setup your button mapping. This will create the link between one bit of your input bitfield (via the mask) and one or several PS2_INPUT buttons
+
+- (optional) You may also call `PS2_AlwaysInput(PS2_INPUT buttons)` to add constantly pressed inputs to the mapping if needed (some dedicated game controllers work this way)
+
+- Call `PS2_Init()`
+
+Valid values for PS2_INPUT buttons are listed in ps2.h :
 
 ```
-button_state = 0;
-if (digitalRead(A0) == LOW) {
-    button_state |= PS_LEFT;
-}
-if (digitalRead(A1) == LOW) {
-    button_state |= PS_DOWN;
-}
-if (digitalRead(A2) == LOW) {
-    button_state |= PS_UP;
-}
-if (digitalRead(A3) == LOW) {
-    button_state |= PS_RIGHT;
-}
+PS2_SELECT  
+PS2_L3      
+PS2_R3      
+PS2_START   
+PS2_UP      
+PS2_RIGHT   
+PS2_DOWN    
+PS2_LEFT    
+PS2_L2      
+PS2_R2      
+PS2_L1      
+PS2_R1      
+PS2_TRIANGLE
+PS2_CIRCLE  
+PS2_CROSS   
+PS2_SQUARE  
 ```
 
-To set a button, `BITWISE OR` the correct define with `button_state`. A button is released if it is not pressed during the loop.
+### loop()
 
-Valid defines are:
+- To set a button, `BITWISE OR` the correct define with `button_state`. A button is released if it is not pressed during the loop
 
-```
-PS_SELECT  
-PS_L3      
-PS_R3      
-PS_START   
-PS_UP      
-PS_RIGHT   
-PS_DOWN    
-PS_LEFT    
-PS_L2      
-PS_R2      
-PS_L1       
-PS_R1       
-PS_TRIANGLE 
-PS_CIRCLE   
-PS_CROSS    
-PS_SQUARE   
-```
+- Call `PS2_Task()` to poll the console and update inputs
+
+### Example
+
+The sketch example includes D-Pad controls and start button, connected to `A0`, `A1`, `A2`, `A3` and `A4`.
 
 ### Additional Notes
 
 #### Changing the ACK Pin
 
-At the top of the `*.ino` file will be a section to change the ACK pin location.
+At the top of the `ps2.c` file will be a section to change the ACK pin location.
 
 ```
 /* USER CUSTOMIZABLE SETTINGS */
@@ -107,28 +107,40 @@ At the top of the `*.ino` file will be a section to change the ACK pin location.
 
 The pin number refers to the `PORT` number, not the standard Arduino number. Refer to the purple tags in the image above.
 
+#### Powering the Arduino
+
+There are several **mutually exclusive** ways to power the arduino :
+
+- Use an USB cable with a wall charger (this unfortunately won't work via the PS2 usb port)
+- Wire the 7.6 rumble motor line to the arduino `Vin` pin
+- Wire the 3.3V line to the arduino `5v` pin (yes, 5v pin, not a typo)
+
+All of these ways are mutually exclusive. **DO NOT** wire multiple power sources at the same time, this can fry your console.
+
 #### Bypassing the Transistors
 
 For safety reasons, I suggest using the transistors as shown above to prevent backfeeding voltage into your console. This has the potential to cause harm. 
 
-If you do not use the transistors and directly wire your Arduino to the console, the following line must be changed
+If you do not use the transistors and directly wire your Arduino to the console, the following line must be changed at the top of `ps2.c`
 
 ```
-#define INVERT_OUTPUT 1   // Set to 1 if CIPO and ACK are open-drain via transistors
+#define INVERT_CIPO 1  // Set to 1 if CIPO is open-drain via transistor (recommended)
+#define INVERT_ACK  1  // Set to 1 if ACK is open-drain via transistor (recommended)
 ```
 
 to
 
 ```
-#define INVERT_OUTPUT 0   // Set to 1 if CIPO and ACK are open-drain via transistors
+#define INVERT_CIPO 0  // Set to 1 if CIPO is open-drain via transistor (recommended)
+#define INVERT_ACK  0  // Set to 1 if ACK is open-drain via transistor (recommended)
 ```
 
-***THIS IS NOT TESTED AND I DO NOT RECOMMEND IT, I AM NOT LIABLE FOR ANY DAMAGE CAUSED TO YOUR PLAYSTATION.***
+***WHILE THIS HAS BEEN TESTED USING THE 3.3V LINE TO 5V PIN, I DO NOT RECOMMEND IT, I AM NOT LIABLE FOR ANY DAMAGE CAUSED TO YOUR PLAYSTATION.***
 
 ## Credits
 
 Wiring and protocol information from [Curious Inventor's page on the Playstation Controller](https://store.curiousinventor.com/guides/PS2)
 
-Code base adapted from [CrazyRedMachine's Ultiamte Pop'n Controller](https://github.com/CrazyRedMachine/UltimatePopnController/tree/PSX), which itself is based on [busslave's PSX_RECEIVER.cpp](https://nfggames.com/forum2/index.php?topic=5001.0).
+Code base adapted from [progmem's USBemani v3](https://github.com/progmem/re-usbemani/).
 
 Discord User GoroKaneda for getting me to work on and document this, as well as additional testing.
