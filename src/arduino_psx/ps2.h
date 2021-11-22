@@ -1,6 +1,12 @@
+#pragma once
 #include <stdlib.h>
 #include <stdint.h>
 #include <avr/interrupt.h>
+
+typedef enum {
+  PS2_DIRECT     = 0x00,
+  PS2_TRANSISTOR = 0xFF,
+} PS2_INVERT;
 
 typedef enum {
   PS2_NC        = 0,
@@ -35,7 +41,7 @@ struct PS2_InputList_t {
 extern "C"{
 #endif
 
-void PS2_Init(void);
+void PS2_Init(PS2_INVERT invert);
 void PS2_Task(void);
 
 void PS2_MapInput(uint16_t *input, uint16_t mask, PS2_INPUT buttons);

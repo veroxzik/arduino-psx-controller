@@ -4,32 +4,37 @@
 #define ACK_PORT  PORTB
 #define ACK_DDR   DDRB
 #define ACK_PIN   4     // PB4 (Pin 8 on Micro) 
-
-/* RECOMMENDED DO NOT CHANGE */
-#define INVERT_CIPO 1  // Set to 1 if CIPO is open-drain via transistor (recommended)
-#define INVERT_ACK  1  // Set to 1 if ACK is open-drain via transistor (recommended)
-
 /* END OF USER CUSTOMIZABLE SETTINGS */
+
+// Port and Pin mask to setup
+uint8_t PinMask = (1<<ACK_PIN);
 
 // Stores a constructed packet for the PS2.
 uint16_t Data = 0;
+// When set, ignore all data until chip select goes high again
+// Shoutouts to @nicolasnoble for the insight on how the PS1 handles chip select
+uint8_t QuietTime = 0;
 // List of available PS2 inputs.
 PS2_InputList_t *PS2Input = NULL;
+
 // Current PS2 state.
 void (*PS2Handler)(uint8_t) = NULL;
 
+// Invert mask for PS2 data.
+uint8_t InvertMask = 0x00;
 
+inline uint8_t ps2_byte(uint8_t data) {
+  return data ^ InvertMask;
+}
 
 void PS2_Acknowledge(void) {
   // Burn a few cycles before acknowledging
   asm volatile(
     "nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\n"
   );
-#if INVERT_ACK == 0
-  ACK_DDR  |= (1<<ACK_PIN);
-#else
-  ACK_DDR  &= ~(1<<ACK_PIN);
-#endif
+  
+  ACK_DDR |=  PinMask;
+  
   // 40 cycles of delay should give us the same delay as a real PS1 controller
   asm volatile(
     "nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\n"
@@ -38,86 +43,33 @@ void PS2_Acknowledge(void) {
     "nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\n"
     "nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\n"
   );
-#if INVERT_ACK == 0
-  ACK_DDR  &= ~(1<<ACK_PIN);
-#else
-  ACK_DDR  |= (1<<ACK_PIN);
-#endif
+  ACK_DDR  &= ~(PinMask);
 }
 
+// Default implementation methods
 void PS2_Listen(uint8_t in);
 void PS2_Addressed(uint8_t in);
 void PS2_HeaderFinished(uint8_t in);
 void PS2_LowerSent(uint8_t in);
 
-uint8_t memory_card_timeout = 0;
-
-void PS2_MemoryCardTimeout(uint8_t in) {
-  if  (memory_card_timeout) --memory_card_timeout;
-  if (!memory_card_timeout)
-    PS2Handler = PS2_Listen;
-}
-
-void PS2_MemoryCardID2(uint8_t in) {
- // If we receive a 0x01 here, revert back to the listener
-  --memory_card_timeout;
-  if (in == 0x01) {
-    memory_card_timeout = 0;
-    PS2_Listen(in);
-    return;
-  }
-  PS2Handler = PS2_MemoryCardTimeout;
-}
-
-void PS2_MemoryCardID1(uint8_t in) {
- // If we receive a 0x01 here, revert back to the listener
-  --memory_card_timeout;
-  if (in == 0x01) {
-    memory_card_timeout = 0;
-    PS2_Listen(in);
-    return;
-  }
-  PS2Handler = PS2_MemoryCardID2;
-}
-
-// Memory card addressed; ignore input
-void PS2_MemoryCardAddressed(uint8_t in) {
-  memory_card_timeout = 8;
-  if (in == 'R')
-    memory_card_timeout = 138;
-  if (in == 'W')
-    memory_card_timeout = 136;
-
-  PS2Handler = PS2_MemoryCardID1;
-}
-
 // Idle state.
 void PS2_Listen(uint8_t in) {
-  if (in == 0x81) {
-    DDRB &= ~0x08;
-    PS2Handler = PS2_MemoryCardAddressed;
-  }
   // Report as a digital controller when addressed
   if (in == 0x01) {
-    DDRB |= 0x08;
-#if INVERT_CIPO == 1
-    SPDR = ~0x41;
-#else
-    SPDR = 0x41;
-#endif
+    SPDR = ps2_byte(0x41);
     PS2Handler = PS2_Addressed;
     PS2_Acknowledge();
+    return;
   }
+  // Otherwise, ignore all incoming traffic until our task performs a reset
+  DDRB &= ~0x08;
+  QuietTime = 255;
 }
 
 // When polling is requested, begin responding
 void PS2_Addressed(uint8_t in) {
   if (in == 0x42) {
-#if INVERT_CIPO == 1
-    SPDR = ~0x5A;
-#else
-    SPDR = 0x5A;
-#endif
+    SPDR = ps2_byte(0x5A);
     PS2Handler = PS2_HeaderFinished;
     PS2_Acknowledge();
   }
@@ -127,11 +79,7 @@ void PS2_Addressed(uint8_t in) {
 void PS2_HeaderFinished(uint8_t in) {
   uint8_t *data = (uint8_t *)&Data;
 
-#if INVERT_CIPO == 1
-  SPDR = ~(*data);
-#else
-  SPDR = (*data);
-#endif
+  SPDR = ps2_byte(*data);
   PS2Handler = PS2_LowerSent;
   PS2_Acknowledge();
 }
@@ -140,23 +88,18 @@ void PS2_HeaderFinished(uint8_t in) {
 void PS2_LowerSent(uint8_t in) {
   uint8_t *data = (uint8_t *)&Data + 1;
 
-#if INVERT_CIPO == 1
-  SPDR = ~(*data);
-#else
-  SPDR = (*data);
-#endif
+  SPDR = ps2_byte(*data);
   PS2Handler = PS2_Listen;
   PS2_Acknowledge();
 }
 
-void PS2_Init(void) {
+void PS2_Init(PS2_INVERT invert) {
   cli();
+  
+  InvertMask = invert;
 
-#if INVERT_ACK == 0
-  ACK_PORT &= ~(1<<ACK_PIN);
-#else
-  ACK_PORT |= (1<<ACK_PIN);
-#endif
+  ACK_PORT &= ~(PinMask);
+  
   PS2_Acknowledge();
   // Set MISO as an output pin
   DDRB |= 0x08;
@@ -170,26 +113,20 @@ void PS2_Init(void) {
         | (1 << SPE);
 
   // Set the first byte up
-  
-#if INVERT_CIPO == 1
-  SPDR = 0x00; // 0xFF;
-#else
-  SPDR = 0xFF;
-#endif
+  SPDR = ps2_byte(0xFF);
+  // Setup our default and current handlers
   PS2Handler = PS2_Listen;
+  // Re-enable interrupts
   sei();
 }
 
 // Update the stored data packet
 void PS2_Task(void) {
-  if (PINB & 0x01) 
-  {
-    
-#if INVERT_CIPO == 1
-    SPDR = 0x00; 
-#else
-    SPDR = 0xFF;
-#endif
+  // If chip select is high (not selected), quiet time is over. Reset state.
+  if (PINB & 0x01) {
+    QuietTime = 0;
+    DDRB |= 0x08;
+    SPDR  = ps2_byte(0xFF);
   }
 
   PS2_InputList_t *map = PS2Input;
@@ -229,7 +166,13 @@ void PS2_AlwaysInput(PS2_INPUT buttons) {
 
 // When a transfer is complete, determine what to do next
 ISR(SPI_STC_vect) {
+  // If chip select is still enabled, stay in quiet mode if set.
+  if (QuietTime) return;
+
   uint8_t input = SPDR;
-  if (input == 0x01 && (!memory_card_timeout)) PS2Handler = PS2_Listen;
-  PS2Handler(SPDR);
+  // If our current input packet is polling the controller, re-enable writes and listen
+  if (input == 0x01)
+    PS2Handler = PS2_Listen;
+
+  PS2Handler(input);
 }
