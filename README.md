@@ -29,6 +29,7 @@ Let's get acquainted with the Playstation cable and color codes. It is always a 
 * **GND:** The common ground for the console, also known as 0V.
 * **3.3V:** This is power coming from the console, which typically powers the controller processor. See [Powering the Arduino](#powering-the-arduino).
 * **CS:** (Chip Select) This line goes LOW when the console is requesting data from a controller. This is how the console selects which player's controller to read from. Also known as SS.
+* **SCK:** (Serial Clock) This is the clock signal coming from the console.
 * **N/C:** This wire is not used (not connected).
 * **ACK:** This is how the controller tells the console it has finished sending data. It is held HIGH via a pull-up resistor inside the console.
 
