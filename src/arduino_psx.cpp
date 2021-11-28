@@ -49,6 +49,7 @@ void PSX_::setButton(uint16_t button, bool state) {
     } else {
         buttonState &= ~button;
     }
+    buttonState |= defaultState;    // Ensure the previously set Always Held buttons are indeed held
 }
 
 void PSX_::send() {

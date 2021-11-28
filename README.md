@@ -43,6 +43,7 @@ The example program follows the wiring below. Please refer to your specific tran
 * CIPO
 * COPI
 * CS
+* SCK
 
 ### Pins that can be changed
 
@@ -60,7 +61,7 @@ There's a few options you have for powering the arduino.
 
 ### Option 1: (Recommended!) 7.6V to VIN
 
-Connect 7.6V to VIN on the Arduino, as shown in the diagram above. This will power the Arduino off the rumble line and at 5V. It is safe to plug in the USB connector at the same time using this method.
+Connect 7.6V to VIN on the Arduino. This will power the Arduino off the rumble line and at 5V. It is safe to plug in the USB connector at the same time using this method.
 
 ### Option 2: USB Only
 
@@ -72,17 +73,20 @@ Disconnect 7.6V and connect 3.3V from the Playstation to the 5V pin on your Ardu
 
 **DO NOT PLUG IN USB WHEN CONNECTED LIKE THIS** as it can damage the Playstation or your PC.
 
+## Installation Instructions:
+
+1. Download: https://github.com/veroxzik/arduino-psx-controller/archive/refs/heads/main.zip
+2. In the Arduino IDE, select `Sketch` > `Include Library` > `Add .ZIP Library...`. Browse to where the downloaded ZIP file is located and click Open. The example will now appear under `File` > `Examples` > `Arduino-PSX`.
+
 ## Basic Use
 
 ### Initialization
 
-Include the header at the top of your code:
+Include the header at the top of your code. This will automatically create an instance of the `PSX` object.
 
 ```
 #include <arduino_psx.h>
 ```
-
-This will automatically create an instance of the `PSX` object, which you will use later.
 
 Next, run the initialization function inside `setup`:
 
@@ -186,3 +190,9 @@ Code base adapted from [CrazyRedMachine's Ultiamte Pop'n Controller](https://git
 Discord User GoroKaneda for getting me to work on and document this, as well as additional testing.
 
 Additional suggestions and feedback from [progmem](https://github.com/progmem).
+
+## Donate
+
+If you appreciate this library or the other projects I do, you can make a monetary donation below. Thanks!
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/donate/?business=6M7ENNVE2ZP5Q&no_recurring=1&currency_code=USD)
