@@ -186,7 +186,7 @@ All rights reserved.
 
 Wiring and protocol information from [Curious Inventor's page on the Playstation Controller](https://store.curiousinventor.com/guides/PS2)
 
-Code base adapted from [CrazyRedMachine's Ultiamte Pop'n Controller](https://github.com/CrazyRedMachine/UltimatePopnController/tree/PSX), which itself is based on [busslave's PSX_RECEIVER.cpp](https://nfggames.com/forum2/index.php?topic=5001.0).
+Code base adapted from [CrazyRedMachine's Ultimate Pop'n Controller](https://github.com/CrazyRedMachine/UltimatePopnController/tree/PSX), which itself is based on [busslave's PSX_RECEIVER.cpp](https://nfggames.com/forum2/index.php?topic=5001.0).
 
 Discord User GoroKaneda for getting me to work on and document this, as well as additional testing.
 
