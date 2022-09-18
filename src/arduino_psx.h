@@ -7,46 +7,10 @@
 #error "Arduino versions older than v1.0 are not supported."
 #endif
 
+#include "digitalWriteFast.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
-
-/* 
-    Following section from Arduino-Libs (digitalWriteFast)
-
-    Copyright (c) 2011-2020 Watterott electronic (www.watterott.com)
-    All rights reserved.
-*/
-
-#if (defined(ARDUINO_AVR_LEONARDO) || \
-       defined(__AVR_ATmega16U4__) || \
-       defined(__AVR_ATmega32U4__))
-
-#define UART_RX_PIN     (0) //PD2
-#define UART_TX_PIN     (1) //PD3
-
-#define I2C_SDA_PIN     (2) //PD1
-#define I2C_SCL_PIN     (3) //PD0
-
-#define SPI_HW_SS_PIN   (17) //PB0
-#define SPI_HW_MOSI_PIN (16) //PB2
-#define SPI_HW_MISO_PIN (14) //PB3
-#define SPI_HW_SCK_PIN  (15) //PB1
-
-#define __digitalPinToPortReg(P) \
-((((P) >= 0 && (P) <= 4) || (P) == 6 || (P) == 12 || (P) == 24 || (P) == 25 || (P) == 29) ? &PORTD : (((P) == 5 || (P) == 13) ? &PORTC : (((P) >= 18 && (P) <= 23)) ? &PORTF : (((P) == 7) ? &PORTE : &PORTB)))
-#define __digitalPinToDDRReg(P) \
-((((P) >= 0 && (P) <= 4) || (P) == 6 || (P) == 12 || (P) == 24 || (P) == 25 || (P) == 29) ? &DDRD : (((P) == 5 || (P) == 13) ? &DDRC : (((P) >= 18 && (P) <= 23)) ? &DDRF : (((P) == 7) ? &DDRE : &DDRB)))
-#define __digitalPinToPINReg(P) \
-((((P) >= 0 && (P) <= 4) || (P) == 6 || (P) == 12 || (P) == 24 || (P) == 25 || (P) == 29) ? &PIND : (((P) == 5 || (P) == 13) ? &PINC : (((P) >= 18 && (P) <= 23)) ? &PINF : (((P) == 7) ? &PINE : &PINB)))
-#define __digitalPinToBit(P) \
-(((P) >= 8 && (P) <= 11) ? (P) - 4 : (((P) >= 18 && (P) <= 21) ? 25 - (P) : (((P) == 0) ? 2 : (((P) == 1) ? 3 : (((P) == 2) ? 1 : (((P) == 3) ? 0 : (((P) == 4) ? 4 : (((P) == 6) ? 7 : (((P) == 13) ? 7 : (((P) == 14) ? 3 : (((P) == 15) ? 1 : (((P) == 16) ? 2 : (((P) == 17) ? 0 : (((P) == 22) ? 1 : (((P) == 23) ? 0 : (((P) == 24) ? 4 : (((P) == 25) ? 7 : (((P) == 26) ? 4 : (((P) == 27) ? 5 : 6 )))))))))))))))))))
-
-#else
-#error "This library does not support any processor besides the ATmega32U4 or ATmega16U4"
-#endif
-
-/* End Arduino-Libs Section */
 
 typedef enum {
     PS_NONE     = 0,
@@ -75,6 +39,9 @@ class PSX_ {
         uint16_t defaultState = 0;
         bool invertCIPO = true;
         bool invertACK = true;
+        volatile uint8_t *cipoDDR;
+        volatile uint8_t *cipoPORT;
+        volatile uint8_t cipoPinMask;
         volatile uint8_t *ackDDR;
         volatile uint8_t *ackPORT;
         volatile uint8_t ackPinMask;

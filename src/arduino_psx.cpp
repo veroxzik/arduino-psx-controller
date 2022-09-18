@@ -5,6 +5,9 @@ ISR(SPI_STC_vect) {
 }
 
 void PSX_::init(int ackPin = 8, bool invACK = false, bool invCIPO = true) {
+    cipoDDR = __digitalPinToDDRReg(SPI_HW_MISO_PIN);
+    cipoPORT = __digitalPinToPortReg(SPI_HW_MISO_PIN);
+    cipoPinMask = __digitalPinToBit(SPI_HW_MISO_PIN);
     ackDDR = __digitalPinToDDRReg(ackPin);
     ackPORT = __digitalPinToPortReg(ackPin);
     ackPinMask = __digitalPinToBit(ackPin);
@@ -20,11 +23,11 @@ void PSX_::init(int ackPin = 8, bool invACK = false, bool invCIPO = true) {
     }
 
     if (invertCIPO) {
-        DDRB |= (1 << 3);       // Set as output
-        PORTB &= ~(1 << 3);     // Set LOW (open drain -- pullup on console)
+        (*cipoDDR) |= (1 << cipoPinMask);       // Set as output
+        (*cipoPORT) &= ~(1 << cipoPinMask);     // Set LOW (open drain -- pullup on console)
     } else {
-        DDRB &= ~(1 << 3);      // Set as input
-        PORTB &= ~(1 << 3);     // Ensure pullup is off
+        (*cipoDDR) &= ~(1 << cipoPinMask);      // Set as input
+        (*cipoPORT) &= ~(1 << cipoPinMask);     // Ensure pullup is off
     }
 
 #if (F_CPU == 16000000L)
@@ -64,7 +67,7 @@ void PSX_::send() {
         }
         currentByte = 0;
         if (!invertCIPO) {
-            DDRB &= ~(1 << 3);  // Disable output
+            (*cipoDDR) &= ~(1 << cipoPinMask);  // Disable output
         }
     }
 }
@@ -73,7 +76,7 @@ void PSX_::isr() {
     uint8_t recvByte = SPDR;
 
     if (recvByte == commandBuf[currentByte] && memcardActive == false) {
-        DDRB |= (1 << 3);   // Enable output
+        (*cipoDDR) |= (1 << 3);   // Enable output
         if (invertCIPO) {
             SPDR = ~dataBuf[currentByte];
         } else {
@@ -96,7 +99,7 @@ void PSX_::isr() {
                 (*ackDDR) &= ~(1 << ackPinMask);
             }
         } else {
-            DDRB &= ~(1 << 3);  // Disable output
+            (*cipoDDR) &= ~(1 << cipoPinMask);  // Disable output
             SPDR = 0xFF;
             currentByte = 0;
         }
@@ -104,7 +107,7 @@ void PSX_::isr() {
         if (recvByte == commandMemcard && currentByte == 0) {
             memcardActive = true;
         }
-        DDRB &= ~(1 << 3);  // Disable output
+        (*cipoDDR) &= ~(1 << cipoPinMask);  // Disable output
         SPDR = 0xFF;
         currentByte = 0;
     }
