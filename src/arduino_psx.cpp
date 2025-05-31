@@ -30,7 +30,8 @@ void PSX_::init(int ackPin = 8, bool invACK = false, bool invCIPO = true) {
 #if (F_CPU == 16000000L)
     SPCR |= (1 << SPR1);  // Fosc/64 @16MHz==250KHz
 #elif (F_CPU == 8000000L)
-    SPCR |= (1 << SPR2) | (1 << SPR1);  // Fosc/32 @8MHz==250KHz
+    SPCR |= (1 << SPR1);    // SPR1=1, SPR0=0 for Fosc/64 base
+    SPSR |= (1 << SPI2X);   // SPI2X=1 for double speed -> Fosc/32 @8MHz==250KHz
 #endif
     SPCR |= (1 << CPHA);  // Setup @ leading edge, sample @ falling edge
     SPCR |= (1 << CPOL);  // Leading edge is falling edge, trailing edge is rising edge
